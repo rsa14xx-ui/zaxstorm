@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ZAXSTORM — AI Assistant</title>
+    
+    <!-- PWA & Theme -->
+    <meta name="theme-color" content="#0A0A0A">
+    <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22ZAXSTORM%22%2C%22short_name%22%3A%22ZAX%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230A0A0A%22%2C%22theme_color%22%3A%22%230A0A0A%22%7D">
+    
+    <!-- Fonts: Inter (Editorial Style) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Markdown & Syntax Highlighting -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+    <style>
+        :root {
+            --bg: #0A0A0A; 
+            --surface: #171717; 
+            --surface-hover: #262626;
+            --border: #333333; 
+            --text: #F5F5F5; 
+            --text-dim: #A3A3A3;
+            --accent: #FFFFFF; 
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--bg); color: var(--text); 
+            height: 100dvh; display: flex; flex-direction: column; 
+            overflow: hidden; -webkit-font-smoothing: antialiased;
+            letter-spacing: -0.02em;
+        }
+
+        /* =========================================
+           1. LANDING PAGE (EDITORIAL STYLE)
+           ========================================= */
+        #landing-page {
+            position: fixed; inset: 0; background-color: var(--bg); z-index: 999;
+            display: flex; flex-direction: column; overflow-y: auto;
+            transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.5s;
+        }
+        #landing-page.hide { transform: translateY(-100%); opacity: 0; pointer-events: none; }
+
+        .nav { display: flex; justify-content: space-between; align-items: center; padding: 24px; border-bottom: 1px solid var(--border); }
+        .nav-logo { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 600; letter-spacing: -0.05em; color: var(--text); }
+        .nav-logo .dot { width: 8px; height: 8px; background-color: var(--accent); display: inline-block; }
+        
+        .hero { padding: 80px 24px 60px; max-width: 600px; margin: 0 auto; text-align: left; }
+        .hero-badge { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-dim); margin-bottom: 24px; display: inline-block; border: 1px solid var(--border); padding: 4px 8px; }
+        .hero-title { font-size: 48px; font-weight: 500; line-height: 1.1; letter-spacing: -0.04em; margin-bottom: 24px; color: var(--text); }
+        .hero-subtitle { font-size: 18px; color: var(--text-dim); line-height: 1.5; margin-bottom: 40px; max-width: 480px; }
+        
+        .btn-primary { background-color: var(--accent); color: var(--bg); border: none; padding: 16px 32px; font-size: 15px; font-weight: 500; font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 12px; transition: opacity 0.2s; }
+        .btn-primary:hover { opacity: 0.8; }
+
+        .section { padding: 60px 24px; border-top: 1px solid var(--border); }
+        .section-header { font-size: 14px; font-weight: 500; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 40px; }
+        
+        .features-grid { display: grid; grid-template-columns: 1fr; gap: 1px; background-color: var(--border); border: 1px solid var(--border); max-width: 600px; margin: 0 auto; }
+        .feature-card { background-color: var(--bg); padding: 32px; transition: background 0.2s; }
+        .feature-card:hover { background-color: var(--surface); }
+        .feature-card h3 { font-size: 16px; font-weight: 500; margin-bottom: 12px; color: var(--text); display: flex; align-items: center; gap: 8px;}
+        .feature-card p { font-size: 14px; color: var(--text-dim); line-height: 1.5; }
+
+        .footer { padding: 40px 24px; text-align: left; font-size: 13px; color: var(--text-dim); border-top: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; }
+
+        /* =========================================
+           2. MAIN APP STYLES (CHAT)
+           ========================================= */
+        #app-container { display: none; flex-direction: column; height: 100dvh; width: 100%; }
+
+        header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background-color: var(--bg); border-bottom: 1px solid var(--border); z-index: 10; }
+        .icon-btn { background: none; border: none; color: var(--text-dim); cursor: pointer; padding: 8px; display: flex; align-items: center; justify-content: center; transition: color 0.2s; }
+        .icon-btn:hover { color: var(--text); }
+        .icon-btn svg { width: 20px; height: 20px; stroke-width: 1.5; }
+        
+        .header-title { font-size: 15px; font-weight: 500; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px; color: var(--text); }
+        .header-title .dot { width: 6px; height: 6px; background-color: var(--text-dim); display: inline-block; }
+
+        #chat-container { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 32px; scroll-behavior: smooth; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #333; }
+
+        .message { display: flex; flex-direction: column; max-width: 100%; }
+        .message.user { align-self: flex-end; max-width: 85%; }
+        .message.ai { align-self: flex-start; width: 100%; }
+        
+        .message.user .bubble { background-color: var(--surface); color: var(--text); padding: 14px 20px; font-size: 15px; line-height: 1.5; border: 1px solid var(--border); border-radius: 4px; }
+        .message.ai .bubble { padding: 0; font-size: 15.5px; line-height: 1.7; color: #D4D4D4; } 
+        
+        .bubble p { margin-bottom: 20px; }
+        .bubble p:last-child { margin-bottom: 0; }
+        .bubble pre { background-color: #000000; padding: 16px; border: 1px solid var(--border); overflow-x: auto; margin: 20px 0; border-radius: 4px; }
+        .bubble code { font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+        .bubble pre code { background: transparent; padding: 0; }
+        .bubble ul, .bubble ol { margin-left: 20px; margin-bottom: 20px; }
+        .bubble li { margin-bottom: 8px; }
+        
+        .typing-cursor { display: inline-block; width: 8px; height: 15px; background-color: var(--text-dim); margin-left: 4px; animation: blink 1s step-end infinite; vertical-align: text-bottom; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        .input-wrapper { padding: 16px 24px; background-color: var(--bg); border-top: 1px solid var(--border); padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+        .input-card { background-color: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+        .input-card:focus-within { border-color: var(--text-dim); }
+        
+        textarea { background: transparent; border: none; color: var(--text); font-family: inherit; font-size: 15px; resize: none; outline: none; max-height: 120px; padding: 4px 8px; width: 100%; line-height: 1.5; letter-spacing: -0.01em; }
+        textarea::placeholder { color: #555; }
+
+        .input-actions { display: flex; justify-content: space-between; align-items: center; }
+        .left-actions { display: flex; gap: 8px; align-items: center; overflow-x: auto; padding-right: 8px;}
+        
+        .feature-pill { background-color: transparent; border: 1px solid var(--border); color: var(--text-dim); padding: 0 12px; height: 30px; font-size: 12px; font-family: inherit; font-weight: 500; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: 0.2s; white-space: nowrap; border-radius: 4px;}
+        .feature-pill.active { border-color: var(--text); color: var(--text); background-color: var(--surface-hover); }
+        .model-pill { background-color: transparent; border: 1px solid var(--border); color: var(--text); padding: 0 12px; height: 30px; font-size: 12px; font-family: inherit; font-weight: 500; display: flex; align-items: center; gap: 6px; cursor: pointer; border-radius: 4px;}
+        
+        .right-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+        .btn-round { width: 32px; height: 32px; background-color: transparent; border: 1px solid var(--border); color: var(--text); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; border-radius: 4px; transition: 0.2s;}
+        .btn-round:hover { background-color: var(--surface-hover); }
+        .btn-round svg { width: 16px; height: 16px; stroke-width: 2; }
+        .btn-send { width: 32px; height: 32px; background-color: var(--text); border: none; color: var(--bg); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; border-radius: 4px; transition: 0.2s; }
+        .btn-send svg { width: 16px; height: 16px; stroke-width: 2.5; }
+        .btn-send:disabled { background-color: var(--surface-hover); color: #555; cursor: not-allowed; }
+        .btn-send.stop-mode { background-color: #FF453A; color: white; }
+
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); z-index: 100; display: none; opacity: 0; transition: 0.3s; }
+        .overlay.active { display: block; opacity: 1; }
+        
+        .modal-sheet { position: fixed; bottom: 0; left: 0; width: 100%; background-color: var(--bg); border-top: 1px solid var(--border); padding: 24px; z-index: 101; transform: translateY(100%); transition: 0.3s cubic-bezier(0.32, 0.72, 0, 1); display: flex; flex-direction: column; gap: 16px; padding-bottom: max(24px, env(safe-area-inset-bottom)); max-height: 85dvh; overflow-y: auto; }
+        .modal-sheet.active { transform: translateY(0); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .modal-header h2 { font-size: 16px; font-weight: 500; }
+
+        .sidebar { position: fixed; top: 0; left: 0; width: 280px; height: 100dvh; background-color: var(--bg); border-right: 1px solid var(--border); z-index: 102; transform: translateX(-100%); transition: 0.3s cubic-bezier(0.32, 0.72, 0, 1); display: flex; flex-direction: column; padding: 24px 16px; }
+        .sidebar.active { transform: translateX(0); }
+        .sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; padding: 0 8px; }
+        .sidebar-header h1 { font-size: 16px; font-weight: 500; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px;}
+        .sidebar-header h1 .dot { width: 6px; height: 6px; background-color: var(--accent); }
+        
+        .sidebar-item { display: flex; align-items: center; gap: 12px; padding: 10px 8px; color: var(--text-dim); text-decoration: none; font-size: 14px; font-weight: 400; transition: 0.2s; cursor: pointer; }
+        .sidebar-item:hover { color: var(--text); background-color: var(--surface); }
+        .sidebar-item svg { width: 18px; height: 18px; stroke-width: 1.5; }
+        
+        .sidebar-divider { height: 1px; background-color: var(--border); margin: 16px 8px; }
+        .sidebar-section-title { font-size: 11px; font-family: 'JetBrains Mono', monospace; font-weight: 500; color: var(--text-dim); margin: 16px 8px 8px 8px; letter-spacing: 0.05em; text-transform: uppercase;}
+        
+        .history-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+        .history-item { display: flex; align-items: center; gap: 10px; padding: 10px 8px; color: var(--text-dim); font-size: 13px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .history-item:hover { color: var(--text); background-color: var(--surface); }
+        .history-item svg { width: 14px; height: 14px; stroke-width: 1.5; flex-shrink: 0;}
+
+        .sidebar-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border); }
+        .profile-btn { width: 32px; height: 32px; border: 1px solid var(--border); color: var(--text); font-family: 'JetBrains Mono', monospace; font-weight: 500; font-size: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .new-chat-btn { background-color: transparent; color: var(--text); border: 1px solid var(--border); padding: 8px 12px; font-size: 13px; font-family: inherit; font-weight: 500; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: 0.2s;}
+        .new-chat-btn:hover { background-color: var(--surface); }
+        .new-chat-btn svg { width: 14px; height: 14px; stroke-width: 2; }
+
+        .model-item { display: flex; flex-direction: column; gap: 4px; padding: 16px; border: 1px solid var(--border); margin-bottom: 8px; cursor: pointer; border-radius: 4px; }
+        .model-item.active { border-color: var(--text); background-color: var(--surface); }
+        .model-item h3 { font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; color: var(--text); }
+        .model-item p { font-size: 12px; color: var(--text-dim); }
+        .badge { font-size: 10px; font-family: 'JetBrains Mono', monospace; background-color: var(--text); color: var(--bg); padding: 2px 6px; }
+        
+        .form-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+        .form-group label { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-dim); font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; }
+        .input-field { width: 100%; padding: 14px; background-color: var(--bg); border: 1px solid var(--border); color: var(--text); font-size: 14px; font-family: inherit; outline: none; border-radius: 4px; }
+        .input-field:focus { border-color: var(--text); }
+        .btn-save { background-color: var(--text); color: var(--bg); border: none; padding: 14px; font-weight: 500; font-size: 14px; font-family: inherit; width: 100%; cursor: pointer; margin-top: 12px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <!-- ================= 1. LANDING PAGE ================= -->
+    <div id="landing-page">
+        <div class="nav">
+            <div class="nav-logo">
+                <div class="dot"></div> ZAXSTORM
+            </div>
+        </div>
+
+        <div class="hero">
+            <div class="hero-badge">V1.0 / AI ASSISTANT</div>
+            <h1 class="hero-title">Kecerdasan Artifisial Tanpa Kompromi.</h1>
+            <p class="hero-subtitle">Asisten AI super cepat yang dirancang khusus untuk membantu coding, menjawab pertanyaan kompleks, dan menyelesaikan tugas harianmu dengan presisi.</p>
+            <button class="btn-primary" onclick="enterApp()">
+                Mulai Sesi
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </button>
+        </div>
+
+        <div class="section">
+            <div class="section-header">Kapabilitas</div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> 9 Pilihan Model</h3>
+                    <p>Mulai dari mesin yang sangat ringan untuk tugas cepat, hingga model penalaran mendalam untuk pemrograman kompleks.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Latensi Ultra Rendah</h3>
+                    <p>Dioptimalkan pada jaringan edge global. Memberikan respons instan tanpa hambatan, siap kapan pun kamu butuhkan.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Arsitektur Tertutup</h3>
+                    <p>Sistem keamanan berlapis memastikan API Key dan seluruh riwayat percakapanmu tidak akan pernah terekspos.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>&copy; 2024 ZAXSTORM. Dirancang oleh Rhangga Saputra Awali.</p>
+        </div>
+    </div>
+
+    <!-- ================= 2. MAIN APP (CHAT) ================= -->
+    <div id="app-container">
+        <header>
+            <button class="icon-btn" onclick="toggleSidebar()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="square"><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>
+            </button>
+            <div class="header-title">
+                <div class="dot"></div> ZAXSTORM
+            </div>
+            <button class="icon-btn" onclick="openSettings()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="square"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </button>
+        </header>
+
+        <div id="chat-container"></div>
+
+        <div class="input-wrapper">
+            <div class="input-card">
+                <textarea id="chat-input" placeholder="Ketik pesan..." rows="1"></textarea>
+                <div class="input-actions">
+                    <div class="left-actions">
+                        <button class="feature-pill" onclick="toggleFeature('thinking')" id="btn-thinking">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10H12V2z"></path><path d="M12 12 2.1 12"></path></svg> Thinking
+                        </button>
+                        <button class="feature-pill" onclick="toggleFeature('search')" id="btn-search">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg> Search
+                        </button>
+                        <button class="model-pill" onclick="openModelModal()">
+                            <span id="current-model-text">Core 4.8</span>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </button>
+                    </div>
+                    <div class="right-actions">
+                        <button class="btn-send" id="send-btn" disabled onclick="handleSendOrStop()">
+                            <svg id="send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="square"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+                            <svg id="stop-icon" style="display:none; width:14px; height:14px;" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"></rect></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="overlay" id="overlay" onclick="closeAll()"></div>
+
+    <!-- SIDEBAR & MODALS -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1><div class="dot"></div> ZAXSTORM</h1>
+        </div>
+        <a class="sidebar-item" href="#">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="square"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> Obrolan
+        </a>
+        <a class="sidebar-item" href="#">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="square"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg> Proyek
+        </a>
+        <a class="sidebar-item" href="#">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="square"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg> Kode
+        </a>
+        <a class="sidebar-item" href="#">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="square"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg> Artefak
+        </a>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-section-title">Terbaru</div>
+        <div class="history-list" id="history-list">
+            <div class="history-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle></svg> Percakapan Baru</div>
+        </div>
+        <div class="sidebar-footer">
+            <div class="profile-btn" id="user-initial">U</div>
+            <button class="new-chat-btn" onclick="resetChat()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Baru
+            </button>
+        </div>
+    </div>
+
+    <div class="modal-sheet" id="settings-modal">
+        <div class="modal-header">
+            <h2>Konfigurasi</h2>
+            <button class="icon-btn" onclick="closeAll()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+        </div>
+        <div class="form-group">
+            <label>Nama Pengguna</label>
+            <input type="text" id="set-name" class="input-field" placeholder="Identitas...">
+        </div>
+        <div class="form-group">
+            <label>System Instruction</label>
+            <textarea id="set-prompt" class="input-field" rows="4"></textarea>
+        </div>
+        <button class="btn-save" onclick="saveSettings()">Simpan Perubahan</button>
+    </div>
+
+    <div class="modal-sheet" id="model-modal">
+        <div class="modal-header">
+            <h2>Mesin Kecerdasan</h2>
+            <button class="icon-btn" onclick="closeAll()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+        </div>
+        <div class="model-item" onclick="selectModel(this, 'Spark 6.0', 'gemini-1.5-flash-8b')"><h3>ZAX Spark 6.0</h3><p>Kecepatan maksimal, penalaran dasar.</p></div>
+        <div class="model-item" onclick="selectModel(this, 'Nano 5.5', 'gemini-2.5-flash-lite')"><h3>ZAX Nano 5.5</h3><p>Efisiensi tinggi untuk percakapan singkat.</p></div>
+        <div class="model-item" onclick="selectModel(this, 'Flash 5.0', 'gemini-2.0-flash-exp')"><h3>ZAX Flash 5.0</h3><p>Eksperimental, latensi sangat rendah.</p></div>
+        <div class="model-item active" onclick="selectModel(this, 'Core 4.8', 'gemini-2.5-flash')"><h3>ZAX Core 4.8</h3><p>Standar industri, seimbang di segala aspek.</p></div>
+        <div class="model-item" onclick="selectModel(this, 'Swift 4.0', 'gemini-1.5-flash')"><h3>ZAX Swift 4.0</h3><p>Stabil untuk beban kerja harian.</p></div>
+        <div class="model-item" onclick="selectModel(this, 'Prime 3.1', 'gemini-1.5-pro')"><h3>ZAX Prime 3.1</h3><p>Analisis data & pemikiran logis lanjutan.</p></div>
+        <div class="model-item" onclick="selectModel(this, 'Pro 2.5', 'gemini-1.5-pro-002')"><h3>ZAX Pro 2.5</h3><p>Spesialisasi koding tingkat lanjut.</p></div>
+        <div class="model-item" onclick="selectModel(this, 'Zenith 1.1', 'gemini-2.5-pro')"><h3>ZAX Zenith 1.1 <span class="badge">MAX</span></h3><p>Penalaran kompleks untuk masalah tersulit.</p></div>
+        <div class="model-item" onclick="selectModel(this, 'Storm 1.0', 'gemini-exp-1206')"><h3>ZAX Storm 1.0 <span class="badge">BETA</span></h3><p>Arsitektur eksperimental paling agresif.</p></div>
+    </div>
+
+    <script>
+        // GANTI URL INI DENGAN URL CLOUDFLARE WORKERS KAMU!
+        const BACKEND_URL = "https://zaxstorm-api.username.workers.dev"; 
+
+        marked.setOptions({
+            highlight: function (code, lang) {
+                const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                return hljs.highlight(code, { language }).value;
+            },
+            breaks: true
+        });
+
+        let userName = localStorage.getItem('zax_user_name') || 'User';
+        const defaultPrompt = "Kamu adalah ZAXSTORM, asisten AI yang pintar, ramah, dan sangat membantu. Kamu dikembangkan oleh Rhangga Saputra Awali, seorang bocah sekaligus programmer berusia belasan tahun yang baru saja meluncurkan sistem ini. Jika pengguna bertanya tentang developer, pembuat, atau siapa yang menciptakanmu, kamu harus dengan bangga menjawab bahwa itu adalah Rhangga Saputra Awali.";
+        let systemPrompt = localStorage.getItem('zax_system_prompt') || defaultPrompt;
+        let currentModel = 'gemini-2.5-flash';
+        
+        let chatHistory = JSON.parse(localStorage.getItem('zax_chat_history')) || [];
+        let currentController = null; 
+
+        const chatInput = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('send-btn');
+        const chatContainer = document.getElementById('chat-container');
+        const overlay = document.getElementById('overlay');
+        
+        document.getElementById('user-initial').textContent = userName.charAt(0).toUpperCase();
+
+        function enterApp() {
+            document.getElementById('landing-page').classList.add('hide');
+            document.getElementById('app-container').style.display = 'flex';
+            loadChatHistory();
+        }
+
+        function loadChatHistory() {
+            chatContainer.innerHTML = '';
+            if (chatHistory.length > 0) {
+                chatHistory.forEach(msg => {
+                    const role = msg.role === 'user' ? 'user' : 'ai';
+                    let text = msg.parts[0].text || "";
+                    renderBubble(text, role);
+                });
+            } else {
+                initiateAutoGreeting();
+            }
+        }
+
+        function renderBubble(text, sender) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${sender}`;
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            
+            if(sender === 'ai') {
+                bubble.innerHTML = marked.parse(text);
+            } else {
+                bubble.textContent = text;
+            }
+            
+            msgDiv.appendChild(bubble);
+            chatContainer.appendChild(msgDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        async function initiateAutoGreeting() {
+            chatHistory.push({ role: "user", parts: [{ text: `[SISTEM: Sapa pengguna bernama ${userName} dengan hangat. Awali dengan emoji 👋, lalu tanyakan "Butuh Bantuan?". Setelah itu tanyakan "Ingin Mulai Mengobrol?". Perkenalkan dirimu sebagai ZaxStorm secara singkat.]` }] });
+            await fetchGemini();
+            chatHistory = []; 
+            localStorage.setItem('zax_chat_history', JSON.stringify(chatHistory));
+        }
+
+        chatInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+            if(!currentController) sendBtn.disabled = this.value.trim() === '';
+        });
+
+        function toggleSidebar() { document.getElementById('sidebar').classList.add('active'); overlay.classList.add('active'); }
+        function openModelModal() { document.getElementById('model-modal').classList.add('active'); overlay.classList.add('active'); }
+        function openSettings() {
+            document.getElementById('set-name').value = userName;
+            document.getElementById('set-prompt').value = systemPrompt;
+            document.getElementById('settings-modal').classList.add('active'); overlay.classList.add('active');
+        }
+        function closeAll() {
+            document.querySelectorAll('.sidebar, .modal-sheet').forEach(el => el.classList.remove('active'));
+            overlay.classList.remove('active');
+        }
+        function toggleFeature(feature) { document.getElementById(`btn-${feature}`).classList.toggle('active'); }
+        
+        function selectModel(element, name, apiModel) {
+            document.querySelectorAll('#model-modal .model-item').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+            currentModel = apiModel;
+            document.getElementById('current-model-text').textContent = name;
+            setTimeout(closeAll, 200);
+        }
+
+        function saveSettings() {
+            userName = document.getElementById('set-name').value.trim() || 'User';
+            systemPrompt = document.getElementById('set-prompt').value.trim() || defaultPrompt;
+            localStorage.setItem('zax_user_name', userName);
+            localStorage.setItem('zax_system_prompt', systemPrompt);
+            document.getElementById('user-initial').textContent = userName.charAt(0).toUpperCase();
+            closeAll();
+        }
+
+        function resetChat() {
+            chatHistory = [];
+            localStorage.removeItem('zax_chat_history');
+            loadChatHistory();
+            closeAll();
+        }
+
+        function handleSendOrStop() {
+            if (currentController) {
+                currentController.abort();
+                currentController = null;
+                resetSendButton();
+            } else {
+                sendMessage();
+            }
+        }
+
+        function resetSendButton() {
+            sendBtn.classList.remove('stop-mode');
+            document.getElementById('send-icon').style.display = 'block';
+            document.getElementById('stop-icon').style.display = 'none';
+            sendBtn.disabled = chatInput.value.trim() === '';
+        }
+
+        async function sendMessage() {
+            const text = chatInput.value.trim();
+            if(!text) return;
+
+            renderBubble(text, 'user');
+            chatHistory.push({ role: "user", parts: [{ text: text }] });
+            localStorage.setItem('zax_chat_history', JSON.stringify(chatHistory));
+            
+            document.getElementById('history-list').innerHTML = `<div class="history-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle></svg> ${text.substring(0, 25)}...</div>`;
+
+            chatInput.value = '';
+            chatInput.style.height = 'auto';
+            await fetchGemini();
+        }
+
+        async function fetchGemini() {
+            sendBtn.disabled = false;
+            sendBtn.classList.add('stop-mode');
+            document.getElementById('send-icon').style.display = 'none';
+            document.getElementById('stop-icon').style.display = 'block';
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message ai';
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            bubble.innerHTML = '<span class="typing-cursor"></span>';
+            msgDiv.appendChild(bubble);
+            chatContainer.appendChild(msgDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            let fullText = "";
+            let typedText = "";
+            let textQueue = [];
+            let isStreaming = true;
+            let isTyping = false;
+
+            function typeCharacter() {
+                if (textQueue.length === 0) {
+                    isTyping = false;
+                    if (!isStreaming || !currentController) {
+                        bubble.innerHTML = marked.parse(typedText);
+                        chatHistory.push({ role: "model", parts: [{ text: fullText }] });
+                        localStorage.setItem('zax_chat_history', JSON.stringify(chatHistory));
+                        resetSendButton();
+                    }
+                    return;
+                }
+
+                isTyping = true;
+                let char = textQueue.shift();
+                typedText += char;
+                
+                bubble.innerHTML = typedText.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, '<br>') + '<span class="typing-cursor"></span>';
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+
+                let delay = 15;
+                if (char === '.') delay = 300;
+                else if (char === ',') delay = 150;
+
+                setTimeout(typeCharacter, delay);
+            }
+
+            try {
+                currentController = new AbortController();
+                
+                const response = await fetch(BACKEND_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        messages: chatHistory,
+                        systemPrompt: systemPrompt,
+                        model: currentModel
+                    }),
+                    signal: currentController.signal
+                });
+
+                if (!response.ok) throw new Error("Cek koneksi backend/internet.");
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                if (data.candidates && data.candidates[0].content) {
+                                    const textPart = data.candidates[0].content.parts[0].text;
+                                    if (textPart) {
+                                        fullText += textPart;
+                                        textQueue.push(...textPart.split(''));
+                                        if (!isTyping) typeCharacter();
+                                    }
+                                }
+                            } catch (e) {}
+                        }
+                    }
+                }
+                
+                isStreaming = false;
+                if (!isTyping && textQueue.length === 0) typeCharacter();
+
+            } catch (error) {
+                isStreaming = false;
+                currentController = null;
+                resetSendButton();
+
+                if (error.name === 'AbortError') {
+                    bubble.innerHTML = marked.parse(typedText) + '<br><br><i style="color:var(--text-dim); font-size:12px;">[Dihentikan]</i>';
+                    chatHistory.push({ role: "model", parts: [{ text: typedText }] });
+                    localStorage.setItem('zax_chat_history', JSON.stringify(chatHistory));
+                } else {
+                    bubble.innerHTML = `Error: ${error.message}`;
+                    chatHistory.pop(); 
+                    localStorage.setItem('zax_chat_history', JSON.stringify(chatHistory));
+                }
+            }
+        }
+    </script>
+</body>
+</html>
